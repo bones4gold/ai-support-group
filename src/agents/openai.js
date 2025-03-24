@@ -1,24 +1,29 @@
-import { OpenAI } from "openai";
+import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
+  dangerouslyAllowBrowser: true // Required for frontend calls
 });
 
-export async function getAgentResponse(agent, userMessage, conversationHistory = []) {
-  const messages = [
-    { role: "system", content: agent.persona },
-    ...conversationHistory.map((msg) => ({
-      role: msg.sender === agent.name ? "assistant" : "user",
-      content: `${msg.sender}: ${msg.text}`
-    })),
-    { role: "user", content: `${agent.name}, what do you want to say next?` }
-  ];
+export async function getAgentResponse(agent, prompt, history = []) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: agent.prompt },
+        ...history.map((m) => ({
+          role: m.sender === 'You' ? 'user' : 'assistant',
+          content: m.text
+        })),
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.8
+    });
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages,
-  });
-
-  return response.choices[0].message.content.trim();
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error("🔴 OpenAI error:", error);
+    alert("OpenAI error: " + error.message);
+    return "Sorry, I had trouble replying.";
+  }
 }
